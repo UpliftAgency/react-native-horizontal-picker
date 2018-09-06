@@ -24,8 +24,6 @@ const defaultSelectedItemStyle = {
 };
 const defaultItemSpacing = 40;
 
-// TODO android
-
 export default class HorizontalPicker extends React.Component {
   state = {
     // Component width
@@ -89,7 +87,7 @@ export default class HorizontalPicker extends React.Component {
         Animated.spring(this._swipeDX, {
           toValue: 0,
           useNativeDriver: USE_NATIVE_DRIVER,
-        }).start()
+        }).start();
       }, 10);
     },
   });
@@ -253,9 +251,13 @@ export default class HorizontalPicker extends React.Component {
     const hoveredValue = this.state.hoveredItemValue;
     const currentValue = hoveredValue ? hoveredValue : selectedValue;
 
+    // android will clip the items that to over the top-level view width.
+    // this is to make sure that doesn't happen.
+    const minWidth = this.state.itemPositions[this.state.itemPositions.length-1] + this.state.itemWidths[this.state.itemWidths.length-1];
+
     return (
-      <View style={[style, { width: '100%' }]}>
-        <Animated.View style={{ transform: [{ translateX: Animated.add(translateXToCenterSelectedValue, this._swipeDX) }] }} onLayout={this.handleLayout} {...this._panResponder.panHandlers} hitSlop={{ top: 10, bottom: 10 }}>
+      <View style={[style, { width: '100%' }]} onLayout={this.handleLayout}>
+        <Animated.View style={{ width: minWidth, transform: [{ translateX: Animated.add(translateXToCenterSelectedValue, this._swipeDX) }] }} {...this._panResponder.panHandlers} hitSlop={{ top: 10, bottom: 10 }}>
           {/* hidden text view to influence the height of the picker. needed since all items are absolutely positioned. */}
           <Text style={[{ paddingVertical: 20 }, defaultItemStyle, itemStyle, { opacity: 0 }]}>{' '}</Text>
 
@@ -317,7 +319,7 @@ class InternalItem extends React.Component {
             <Text style={[{ paddingVertical: 20 }, defaultItemStyle, itemStyle, defaultSelectedItemStyle, selectedItemStyle, { opacity: isSelected ? 1 : 0 }]} onLayout={onLayout}>
               {label}
             </Text>
-            <Text style={[{ paddingVertical: 20, position: 'absolute', top: 0, left: 0 }, defaultItemStyle, itemStyle, { opacity: isSelected ? 0 : 1 }]}>
+            <Text style={[{ paddingVertical: 20, position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 }, defaultItemStyle, itemStyle, { opacity: isSelected ? 0 : 1 }]}>
               {label}
             </Text>
           </View>
