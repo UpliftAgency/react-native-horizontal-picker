@@ -47,6 +47,8 @@ export default class HorizontalPicker extends React.Component {
   // and an animated value for the current selection to drive the switching animation
   _selectedIdx = new Animated.Value(this.getCurrentItemIndex());
 
+  alreadyAnimatingChange = false;
+
   _panResponder = PanResponder.create({
     onStartShouldSetPanResponder: (e, gestureState) => {
       if (this.props.enabled === false) return false;
@@ -71,7 +73,8 @@ export default class HorizontalPicker extends React.Component {
       if (hoveredItemValue !== this.state.hoveredItemValue) {
         this.setState({ hoveredItemValue });
       }
-      Animated.spring(this._swipeDX, {
+      Animated.timing(this._swipeDX, {
+        duration: 10,
         toValue: gestureState.dx,
         useNativeDriver: USE_NATIVE_DRIVER,
       }).start();
@@ -79,16 +82,48 @@ export default class HorizontalPicker extends React.Component {
 
     onPanResponderRelease: (e, gestureState) => {
       const hoveredItem = this.calculateHoveredItem();
-      if (hoveredItem) this.props.onValueChange(hoveredItem.value, hoveredItem.index);
+      if (hoveredItem) {
+        setTimeout(() => {
+          // synchronize swipe reset and new item selection animation, even before this component receives an updated selectedValue
+          // setting this flag will prevent componentDidUpdate from animating
+          this.alreadyAnimatingChange = true;
+          this.props.onValueChange(hoveredItem.value, hoveredItem.index);
+          this.setState({ hoveredItemValue: null });
+          Animated.parallel([
+            Animated.timing(this._swipeDX, {
+              duration: 100,
+              toValue: 0,
+              useNativeDriver: USE_NATIVE_DRIVER,
+            }),
+            Animated.timing(this._selectedIdx, {
+              duration: 100,
+              toValue: hoveredItem.index,
+              useNativeDriver: USE_NATIVE_DRIVER,
+            }),
+          ]).start(() => {
+            this.alreadyAnimatingChange = false;
+            // if it turns out that the selectedValue prop was not updated by the time the animation is finished,
+            // reset _selectedIdx to match the current prop value
+            if (this.props.selectedValue !== hoveredItem.value) {
+              Animated.timing(this._selectedIdx, {
+                duration: 100,
+                toValue: this.getCurrentItemIndex(),
+                useNativeDriver: USE_NATIVE_DRIVER,
+              }).start();
+            }
+          });
+        }, 10);
+      } else {
+        this.setState({ hoveredItemValue: null });
+        setTimeout(() => {
+          Animated.spring(this._swipeDX, {
+            toValue: 0,
+            useNativeDriver: USE_NATIVE_DRIVER,
+          }).start();
+        }, 10);
+      }
 
       this.swipeDX = 0;
-      this.setState({ hoveredItemValue: null });
-      setTimeout(() => {
-        Animated.spring(this._swipeDX, {
-          toValue: 0,
-          useNativeDriver: USE_NATIVE_DRIVER,
-        }).start();
-      }, 10);
     },
   });
 
@@ -103,7 +138,7 @@ export default class HorizontalPicker extends React.Component {
 
     // animate to new selection
     const currentIndex = this.getCurrentItemIndex();
-    if (currentIndex === -1) return;
+    if (currentIndex === -1 || this.alreadyAnimatingChange) return;
     Animated.spring(this._selectedIdx, {
       toValue: currentIndex,
       useNativeDriver: USE_NATIVE_DRIVER,
