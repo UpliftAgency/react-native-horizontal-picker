@@ -95,7 +95,7 @@ export default class HorizontalPicker extends React.Component {
 
           return new Promise(resolve => {
             Animated.timing(this._swipeDX, {
-              duration: 300,
+              duration: 50,
               toValue: this.swipeDX,
               useNativeDriver: USE_NATIVE_DRIVER,
             }).start(resolve);
