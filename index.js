@@ -10,7 +10,8 @@ import {
 // Constants
 const USE_NATIVE_DRIVER = false;
 const VIRTUALIZATION_THRESHOLD = 40; // virtualize the list if there are more than this number of items
-const VIRTUALIZATION_BUFFER = 15; // render this many items to the left & to the right of the current item. don't render the rest
+const VIRTUALIZATION_BUFFER = 20; // render this many items to the left & to the right of the current item. don't render the rest
+const ESTIMATED_ITEM_WIDTH = 30;
 
 // Defaults
 const defaultItemStyle = {
@@ -75,15 +76,38 @@ export default class HorizontalPicker extends React.Component {
       }
       Animated.timing(this._swipeDX, {
         duration: 10,
-        toValue: gestureState.dx,
+        toValue: this.swipeDX,
         useNativeDriver: USE_NATIVE_DRIVER,
       }).start();
     },
 
     onPanResponderRelease: (e, gestureState) => {
-      const hoveredItem = this.calculateHoveredItem();
-      if (hoveredItem) {
-        setTimeout(() => {
+      let updateForVelocity = (() => {
+        if (Math.abs(gestureState.vx) > 1) {
+          const multiplierDueToVelocity = Math.pow(Math.max(1.05, Math.abs(gestureState.vx)), 1.65);
+          this.swipeDX = this.swipeDX * multiplierDueToVelocity;
+
+          const hoveredItem = this.calculateHoveredItem();
+          const hoveredItemValue = hoveredItem ? hoveredItem.value : null;
+          if (hoveredItemValue !== this.state.hoveredItemValue) {
+            this.setState({ hoveredItemValue });
+          }
+
+          return new Promise(resolve => {
+            Animated.timing(this._swipeDX, {
+              duration: 300,
+              toValue: this.swipeDX,
+              useNativeDriver: USE_NATIVE_DRIVER,
+            }).start(resolve);
+          })
+        } else {
+          return new Promise(resolve => setTimeout(resolve, 25));
+        }
+      })();
+
+      updateForVelocity.then(() => {
+        const hoveredItem = this.calculateHoveredItem();
+        if (hoveredItem) {
           // synchronize swipe reset and new item selection animation, even before this component receives an updated selectedValue
           // setting this flag will prevent componentDidUpdate from animating
           this.alreadyAnimatingChange = true;
@@ -112,18 +136,16 @@ export default class HorizontalPicker extends React.Component {
               }).start();
             }
           });
-        }, 10);
-      } else {
-        this.setState({ hoveredItemValue: null });
-        setTimeout(() => {
+        } else {
+          this.setState({ hoveredItemValue: null });
           Animated.spring(this._swipeDX, {
             toValue: 0,
             useNativeDriver: USE_NATIVE_DRIVER,
           }).start();
-        }, 10);
-      }
+        }
 
-      this.swipeDX = 0;
+        this.swipeDX = 0;
+      });
     },
   });
 
@@ -183,9 +205,8 @@ export default class HorizontalPicker extends React.Component {
   }
 
   getItemWidth(idx) {
-    const ESTIMATED_WIDTH = 30;
     const w = this.state.itemWidths[idx];
-    if (w == null) return ESTIMATED_WIDTH;
+    if (w == null) return ESTIMATED_ITEM_WIDTH;
     return w;
   }
 
