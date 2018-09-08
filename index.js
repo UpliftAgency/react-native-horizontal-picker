@@ -82,20 +82,30 @@ export default class HorizontalPicker extends React.Component {
     },
 
     onPanResponderRelease: (e, gestureState) => {
-      let updateForVelocity = (() => {
+      let updateForVelocity = () => {
         if (Math.abs(gestureState.vx) > 1) {
+          // take velocity into account to multiply the swipe
           const multiplierDueToVelocity = Math.pow(Math.max(1.05, Math.abs(gestureState.vx)), 1.65);
           this.swipeDX = this.swipeDX * multiplierDueToVelocity;
 
+          // calculate the item at the new swipe position
           const hoveredItem = this.calculateHoveredItem();
           const hoveredItemValue = hoveredItem ? hoveredItem.value : null;
           if (hoveredItemValue !== this.state.hoveredItemValue) {
             this.setState({ hoveredItemValue });
           }
 
+          // set the swipe position to be perfectly at the hovered item
+          if (hoveredItem) {
+            const currentPositionStart = this.state.itemPositions[this.getCurrentItemIndex()] || 0;
+            const hoveredPositionStart = this.state.itemPositions[hoveredItem.index] || 0;
+            this.swipeDX = currentPositionStart - hoveredPositionStart;
+          }
+
+          // animate transition to the new swipe position
           return new Promise(resolve => {
             Animated.timing(this._swipeDX, {
-              duration: 50,
+              duration: 300,
               toValue: this.swipeDX,
               useNativeDriver: USE_NATIVE_DRIVER,
             }).start(resolve);
@@ -103,9 +113,10 @@ export default class HorizontalPicker extends React.Component {
         } else {
           return new Promise(resolve => setTimeout(resolve, 25));
         }
-      })();
+      };
 
-      updateForVelocity.then(() => {
+      // wait for velocity-related updates
+      updateForVelocity().then(() => {
         const hoveredItem = this.calculateHoveredItem();
         if (hoveredItem) {
           // synchronize swipe reset and new item selection animation, even before this component receives an updated selectedValue
