@@ -1,0 +1,42 @@
+{
+  "name": "rn-horizontal-picker",
+  "version": "1.0.0",
+  "description": "Horizontal version of React Native's Picker component",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/UpliftAgency/react-native-horizontal-picker.git"
+  },
+  "keywords": [
+    "react-native",
+    "picker",
+    "horizontal",
+    "picker"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/UpliftAgency/react-native-horizontal-picker/issues"
+  },
+  "homepage": "https://github.com/UpliftAgency/react-native-horizontal-picker#readme",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,json,css,md}": ["prettier --write", "git add"]
+  },
+  "peerDependencies": {
+    "react": ">=15.4",
+    "react-native": ">=0.30"
+  },
+  "devDependencies": {
+    "husky": "^0.14.3",
+    "lint-staged": "^7.2.2",
+    "prettier": "^1.14.2"
+  }
+}
