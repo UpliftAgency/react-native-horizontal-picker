@@ -38,6 +38,7 @@ export default class HorizontalPicker extends React.Component {
     itemPositions: [], // x position of all items
     translateXs: [], // translateX values to center a given item
     hoveredItemValue: null, // which item value is currently being 'hovered', i.e. during the swipe
+
   };
 
   // store dx of the current swipe as a number
@@ -294,7 +295,18 @@ export default class HorizontalPicker extends React.Component {
   }
 
   render() {
-    const { selectedValue, style, itemStyle, selectedItemStyle, enabled } = this.props;
+    const {
+      selectedValue,
+      style,
+      itemStyle,
+      selectedItemStyle,
+      enabled,
+      secondItemStyle,
+      thirdItemStyle
+    } = this.props;
+
+    let  selectedItemIndex;
+    
     const itemSpacing = this.getItemSpacing();
     const items = this.getItems();
     const selectedItemIdx = this.getCurrentItemIndex();
@@ -323,34 +335,79 @@ export default class HorizontalPicker extends React.Component {
     const minWidth = this.state.itemPositions[this.state.itemPositions.length-1] + this.state.itemWidths[this.state.itemWidths.length-1];
 
     return (
-      <View style={[style, { width: '100%' }]} onLayout={this.handleLayout}>
-        <Animated.View style={{ width: minWidth, transform: [{ translateX: Animated.add(translateXToCenterSelectedValue, this._swipeDX) }] }} {...this._panResponder.panHandlers} hitSlop={{ top: 10, bottom: 10 }}>
-          {/* hidden text view to influence the height of the picker. needed since all items are absolutely positioned. */}
-          <Text style={[{ paddingVertical: 20 }, defaultItemStyle, itemStyle, { opacity: 0 }]}>{' '}</Text>
+      <View style={{ width: '100%', paddingVertical: 7, height: 65, borderWidth: 0}}>
+        <View style={[style, { width: '100%' }]} onLayout={this.handleLayout}>
+          <Animated.View style={{ width: minWidth, transform: [{ translateX: Animated.add(translateXToCenterSelectedValue, this._swipeDX) }] }} {...this._panResponder.panHandlers} hitSlop={{ top: 10, bottom: 10 }}>
+            {/* hidden text view to influence the height of the picker. needed since all items are absolutely positioned. */}
+            <Text style={[{ paddingVertical: 20 }, defaultItemStyle, itemStyle, { opacity: 0 }]}>{' '}</Text>
 
-          {cut(items).map(item => {
-            const isLast = item.index === items.length-1;
-            const isSelected = item.value === currentValue;
-            const offsetFromLeft = this.state.itemPositions[item.index] || 0;
-            return (
-              <View key={item.value} style={{ position: 'absolute', top: 0, left: 0, transform: [{ translateX: offsetFromLeft }] }}>
-                <InternalItem
-                  key={item.value}
-                  idx={item.index}
-                  label={item.label}
-                  enabled={enabled}
-                  onSelect={() => this.props.onValueChange(item.value, item.index)}
-                  isSelected={isSelected}
-                  isLast={isLast}
-                  itemSpacing={itemSpacing}
-                  itemStyle={itemStyle}
-                  selectedItemStyle={selectedItemStyle}
-                  onLayout={this.handleItemLayout(item.index)}
-                />
-              </View>
-            );
-          })}
-        </Animated.View>
+            {cut(items).map((item, i, arr) => {
+              const isLast = item.index === items.length-1;
+              const isSelected = item.value === currentValue;
+
+              let isSecond = false;
+              let isThird = false;
+
+              if  (!isSelected && (arr[i-1]&&(arr[i-1].value === currentValue) || arr[i+1]&&(arr[i+1].value === currentValue))) {
+                isSecond = true;
+                isThird = false;
+              } else if  (!isSelected && (arr[i-2]&& (arr[i-2].value === currentValue) || arr[i+2]&&(arr[i+2].value === currentValue))) {
+                isSecond = false;
+                isThird = true;
+              }
+              const offsetFromLeft = this.state.itemPositions[item.index] || 0;
+              return (
+                <View key={item.value} style={{ position: 'absolute', top: 0, left: 0, transform: [{ translateX: offsetFromLeft }] }}>
+                  <InternalItem
+                    key={item.value}
+                    idx={item.index}
+                    selectedItemIndex={selectedItemIndex}
+                    isSecond={isSecond}
+                    isThird={isThird}
+                    label={item.label}
+                    enabled={enabled}
+                    onSelect={() => this.props.onValueChange(item.value, item.index)}
+                    isSelected={isSelected}
+                    isLast={isLast}
+                    itemSpacing={itemSpacing}
+                    itemStyle={itemStyle}
+                    secondItemStyle={secondItemStyle}
+                    thirdItemStyle={thirdItemStyle}
+                    selectedItemStyle={selectedItemStyle}
+                    onLayout={this.handleItemLayout(item.index)}
+                  />
+                </View>
+              );
+            })}
+          </Animated.View>
+        </View>
+
+        <View style={{
+          backgroundColor: "#FFF",
+          position: "absolute",
+          height: 15,
+          width: 15,
+          top: 0,
+          borderRightWidth: 1.5,
+          borderBottomWidth: 1.5,
+          borderColor: "#99999988",
+          alignSelf: "center",
+          transform: [{ rotate: '45deg'}]
+        }} />
+
+        <View style={{
+          backgroundColor: "#FFF",
+          position: "absolute",
+          height: 15,
+          width: 15,
+          bottom: 0,
+          borderLeftWidth: 1.5,
+          borderTopWidth: 1.5,
+          borderColor: "#99999988",
+          alignSelf: "center",
+          transform: [{ rotate: '45deg'}]
+        }} />
+
       </View>
     )
   }
@@ -360,6 +417,7 @@ HorizontalPicker.Item = ({ label, value }) => {};
 
 class InternalItem extends React.Component {
   shouldComponentUpdate(nextProps) {
+    
     return (
       nextProps.isSelected !== this.props.isSelected ||
       nextProps.label !== this.props.label ||
@@ -367,6 +425,11 @@ class InternalItem extends React.Component {
       nextProps.itemSpacing !== this.props.itemSpacing ||
       nextProps.itemStyle !== this.props.itemStyle ||
       nextProps.selectedItemStyle !== this.props.selectedItemStyle ||
+
+      nextProps.selectedItemIndex !== this.props.selectedItemIndex ||
+
+      nextProps.isSecond !== this.props.isSecond ||
+      nextProps.isThird !== this.props.isThird ||
       // since function props (onSelect, onLayout) realistically will only change iff index changes,
       // we can compare idx to avoid comparing functions (which will never be equal anyway)
       nextProps.idx !== this.props.idx
@@ -378,15 +441,41 @@ class InternalItem extends React.Component {
   }
 
   render() {
-    const { label, enabled, onSelect, isSelected, isLast, itemSpacing, onLayout, itemStyle, selectedItemStyle } = this.props;
+    const {
+      label,
+      enabled,
+      onSelect,
+      isSelected,
+      isLast,
+      itemSpacing,
+      onLayout,
+      itemStyle,
+      selectedItemStyle,
+      idx,
+      secondItemStyle,
+      thirdItemStyle,
+      selectedItemIndex,
+      isSecond,
+      isThird,
+    } = this.props;
+
+    let calculatedItemStyle = itemStyle;
+
+    if (isSecond) {
+      calculatedItemStyle = secondItemStyle;
+    }
+    if (isThird) {
+      calculatedItemStyle = thirdItemStyle
+    }
+
     return (
       <View style={{ marginRight: !isLast ? itemSpacing : 0 }}>
         <TouchableWithoutFeedback onPress={enabled !== false ? onSelect : null}>
           <View>
-            <Text style={[{ paddingVertical: 20 }, defaultItemStyle, itemStyle, defaultSelectedItemStyle, selectedItemStyle, { opacity: isSelected ? 1 : 0 }]} onLayout={onLayout}>
+            <Text style={[{ paddingVertical: 10 }, defaultItemStyle, calculatedItemStyle, defaultSelectedItemStyle, selectedItemStyle, { opacity: isSelected ? 1 : 0 }]} onLayout={onLayout}>
               {label}
             </Text>
-            <Text style={[{ paddingVertical: 20, position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 }, defaultItemStyle, itemStyle, { opacity: isSelected ? 0 : 1 }]}>
+            <Text style={[{ paddingVertical: 10, position: 'absolute', top: 0, left: 0, bottom: 0, right: 0 }, defaultItemStyle, calculatedItemStyle, { opacity: isSelected ? 0 : 1 }]}>
               {label}
             </Text>
           </View>
